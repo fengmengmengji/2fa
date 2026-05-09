@@ -1,0 +1,61 @@
+name = "2fa"
+main = "src/worker.js"
+compatibility_date = "2024-01-13"
+workers_dev = true
+
+# KV 命名空间
+# 始终声明 SECRETS_KV，避免 Git 自动构建部署时丢失绑定。
+# 新版 Wrangler 会在首次部署时自动创建或保持已链接的 KV 资源。
+# 如需固定到指定资源，可在本地补充 id / preview_id。
+[[kv_namespaces]]
+binding = "SECRETS_KV"
+
+# 环境变量 (Secrets)
+# 注意：敏感信息使用 Cloudflare Secrets 安全存储
+#
+# 生产环境（默认）设置：
+#   npx wrangler secret put ENCRYPTION_KEY    # 加密密钥（可选，用于数据加密）
+#
+# 开发环境设置：
+#   npx wrangler secret put ENCRYPTION_KEY --env development
+#
+# 详细配置指南：docs/DEPLOYMENT.md
+
+# 定时任务配置 - 每天凌晨0点（北京时间）自动备份（仅在数据变化时执行）
+[triggers]
+crons = ["0 16 * * *"]
+
+# ====================================
+# 🚀 Service Worker 自动版本管理
+# ====================================
+# SW_VERSION 将在部署时通过 scripts/generate-version.js 自动生成
+# 支持三种版本策略：
+#   - 时间戳（默认）：v20250102-123456
+#   - Git commit：v<short-hash>
+#   - Package版本：v1.0.0
+#
+# 使用方式：
+#   npm run deploy              # 使用时间戳版本
+#   npm run deploy:git          # 使用 git commit 版本
+#   npm run deploy:package      # 使用 package.json 版本
+#
+# 注意：版本号由部署脚本注入，此处的值仅用于本地开发
+# ENVIRONMENT 默认为 production，确保任何直达部署入口（wrangler deploy、Git 自动构建）
+# 都能拿到长缓存；本地开发请走 `npm run dev`（已绑定 --env development）
+[vars]
+SW_VERSION = "v1"
+ENVIRONMENT = "production"
+
+# ====================================
+# 开发/测试环境配置
+# ====================================
+[env.development]
+name = "2fa-dev"
+
+# 绑定项不可继承，开发环境也需要显式声明。
+[[env.development.kv_namespaces]]
+binding = "SECRETS_KV"
+
+[env.development.vars]
+ENVIRONMENT = "development"
+SW_VERSION = "v1"
